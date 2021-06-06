@@ -1,11 +1,9 @@
 import os
 
 import PySimpleGUI as sg
-import numpy as np
-import sounddevice as sd
-import soundfile as sf
-from scipy.signal import fftconvolve
-import matplotlib.pyplot as plt
+
+from device_setup import *
+from process_block import *
 """ Processing """
 
 
@@ -18,24 +16,18 @@ def process_frame(indata, outdata, frames, time, status):
     outdata[:, 1] = conv_result
     # outdata[:] = indata
 
+
 def alert_popup(msg):
     alert = sg.Window('', [[sg.Text(msg)], [sg.OK()]],
                       element_justification='c', no_titlebar=True)
     alert.read()
     alert.close()
 
+
 """ GUI setup """
 sg.theme('DarkBlack')
 
-input_devices = list()
-output_devices = list()
-default_input = sd.query_devices(kind='input').get('name')
-default_output = sd.query_devices(kind='output').get('name')
-for device in sd.query_devices():
-    if device.get('max_input_channels') > 0:
-        input_devices.append(device.get('name'))
-    if device.get('max_output_channels') > 0:
-        output_devices.append(device.get('name'))
+
 layout = [
     [sg.Text("Input: ", size=(8, 1)), sg.Combo(input_devices, default_value=default_input, key='input_device', size=(50, 1))],
     [sg.Text("Output:", size=(8, 1)), sg.Combo(output_devices, default_value=default_output, key='output_device', size=(50, 1))],
@@ -57,14 +49,9 @@ while True:
         if not ir_filename or not os.path.isfile(ir_filename) or not ir_filename.endswith('.wav'):
             alert_popup("Please select a valid IR file!")
         else:
-            impulse_response, fs = sf.read(ir_filename)
-            print(f"Loaded IR {ir_filename}")
-            # plt.plot(data)
-            # plt.show(block=False)
-
+            process = BlockProcessor(ir_filename, None, blocksize=1024)
             try:
-                # with sd.Stream(device=(values.get('input_device'), values.get('output_device')), callback=process_frame):
-                with sd.Stream(callback=process_frame):
+                with sd.Stream(blocksize=1024, callback=process.convolve_ir_block):
                     alert_popup("Click to stop streaming")
             except Exception as e:
                 exit(-1)

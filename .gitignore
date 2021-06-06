@@ -1,0 +1,4 @@
+training/data/*.wav
+training/labels/*.wav
+.idea
+__pycache__
